@@ -2,11 +2,18 @@
  * useOperationForm Hook
  * Custom hook that combines form state, validation logic, and submission for operations
  * Handles: form data, validation, active card options, type options, submit handler
+ * Accepts activeCards as a parameter for reusability
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import { useOperations } from './useOperations'
 import { OperationFormData, OperationFormErrors, OperationType, CreditCard } from '@/types/credit-card.types'
+
+interface UseOperationFormProps {
+  activeCards: CreditCard[]
+  isSubmitting: boolean
+  error: Error | null
+  onSubmit: (data: { cardId: number; type: OperationType; amount: number; description: string }) => Promise<void>
+}
 
 interface UseOperationFormReturn {
   // Form state
@@ -25,9 +32,9 @@ interface UseOperationFormReturn {
   handleSubmit: () => Promise<void>
   resetForm: () => void
   
-  // State from useOperations
-  isSubmitting: ReturnType<typeof useOperations>['isSubmitting']
-  error: ReturnType<typeof useOperations>['error']
+  // State from parent
+  isSubmitting: boolean
+  error: Error | null
   
   // Computed values
   isFormValid: boolean
@@ -40,14 +47,12 @@ const initialFormData: OperationFormData = {
   description: '',
 }
 
-export function useOperationForm(): UseOperationFormReturn {
-  // Get data fetching logic from useOperations
-  const {
-    activeCards,
-    isSubmitting,
-    error,
-    createOperation,
-  } = useOperations()
+export function useOperationForm({
+  activeCards,
+  isSubmitting,
+  error,
+  onSubmit,
+}: UseOperationFormProps): UseOperationFormReturn {
 
   // Form state
   const [formData, setFormData] = useState<OperationFormData>(initialFormData)
@@ -135,7 +140,7 @@ export function useOperationForm(): UseOperationFormReturn {
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) return
 
-    await createOperation({
+    await onSubmit({
       cardId: formData.cardId!,
       type: formData.type,
       amount: parseFloat(formData.amount),
@@ -144,7 +149,7 @@ export function useOperationForm(): UseOperationFormReturn {
 
     // Reset form on success
     resetForm()
-  }, [formData, validateForm, createOperation, resetForm])
+  }, [formData, validateForm, onSubmit, resetForm])
 
   return {
     // Form state

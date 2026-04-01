@@ -21,13 +21,16 @@ export const OperationsPage: FC = () => {
   // Data fetching for operations list
   const {
     operations,
+    activeCards,
     isLoading,
     error,
     totalConsumption,
     totalPayments,
+    createOperation,
+    isSubmitting: isOperationsSubmitting,
   } = useOperations()
   
-  // Form logic
+  // Form logic - pass activeCards and createOperation
   const {
     formData,
     formErrors,
@@ -38,8 +41,15 @@ export const OperationsPage: FC = () => {
     handleAmountChange,
     handleDescriptionChange,
     handleSubmit,
-    isSubmitting,
-  } = useOperationForm()
+  } = useOperationForm({
+    activeCards,
+    isSubmitting: isOperationsSubmitting,
+    error,
+    onSubmit: createOperation,
+  })
+
+  // Alias for consistent naming in the component
+  const isSubmitting = isOperationsSubmitting
 
   // Format currency
   const formatCurrency = useMemo(() => (value: number) => {

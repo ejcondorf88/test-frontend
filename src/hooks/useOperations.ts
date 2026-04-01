@@ -7,9 +7,9 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { operationsApi, creditCardApi } from '@/api/endpoints'
+import { operationsApi } from '@/api/endpoints'
 import { Operation, OperationFilters, OperationCreateRequest, CreditCard } from '@/types/credit-card.types'
-import { queryKeys } from './useQueries'
+import { queryKeys, useActiveCards } from './useQueries'
 
 interface UseOperationsReturn {
   // State
@@ -69,11 +69,8 @@ export function useOperations(): UseOperationsReturn {
   const totalPages = operationsData?.totalPages ?? 0
   const total = operationsData?.total ?? 0
   
-  // React Query for fetching active cards
-  const { data: activeCardsData } = useQuery({
-    queryKey: queryKeys.creditCards.active(),
-    queryFn: () => creditCardApi.getAll({ status: 'ACTIVA', limit: 100 }),
-  })
+  // React Query for fetching active cards using useActiveCards hook
+  const { data: activeCardsData } = useActiveCards(100)
   
   const activeCards = activeCardsData?.data ?? []
   
