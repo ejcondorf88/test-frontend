@@ -26,8 +26,7 @@ interface UseCreditCardsReturn {
   setPage: (page: number) => void
   setStatusFilter: (status: string | undefined) => void
   setSearchFilter: (search: string) => void
-  blockCard: (id: number) => Promise<void>
-  activateCard: (id: number) => Promise<void>
+  updateStatus: (id: number, status: 'ACTIVA' | 'BLOQUEADA') => Promise<void>
   
   // Helpers
   refetch: () => Promise<void>
@@ -97,24 +96,13 @@ export function useCreditCards(): UseCreditCardsReturn {
     setFilters({ search })
   }, [setFilters])
 
-  // Block card
-  const blockCard = useCallback(async (id: number) => {
+  // Update status
+  const updateStatus = useCallback(async (id: number, status: 'ACTIVA' | 'BLOQUEADA') => {
     try {
-      await creditCardApi.block(id)
+      await creditCardApi.updateStatus(id, status)
       await fetchCards() // Refetch after action
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al bloquear la tarjeta')
-      throw err
-    }
-  }, [fetchCards])
-
-  // Activate card
-  const activateCard = useCallback(async (id: number) => {
-    try {
-      await creditCardApi.activate(id)
-      await fetchCards() // Refetch after action
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al activar la tarjeta')
+      setError(err instanceof Error ? err.message : `Error al actualizar el estado`)
       throw err
     }
   }, [fetchCards])
@@ -147,8 +135,7 @@ export function useCreditCards(): UseCreditCardsReturn {
     setPage,
     setStatusFilter,
     setSearchFilter,
-    blockCard,
-    activateCard,
+    updateStatus,
     
     // Helpers
     refetch,
