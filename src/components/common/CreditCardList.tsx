@@ -35,8 +35,7 @@ export const CreditCardList: FC<CreditCardListProps> = ({ onViewCard }) => {
     setPage,
     setStatusFilter,
     setSearchFilter,
-    blockCard,
-    activateCard,
+    updateStatus,
     isEmpty,
   } = useCreditCards()
 

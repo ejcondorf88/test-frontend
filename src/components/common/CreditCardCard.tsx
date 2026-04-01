@@ -1,30 +1,31 @@
 /**
  * CreditCard Card Component
- * Displays a single credit card with rotation/flip effect
+ * Displays a single credit card with rotation/flip effect and status dropdown
  */
 
 import { FC, useState } from 'react'
 import { Tag } from 'primereact/tag'
 import { Button } from 'primereact/button'
-import { CreditCard as CreditCardType } from '@/types/credit-card.types'
+import { Dropdown } from 'primereact/dropdown'
+import { SelectButton } from 'primereact/selectbutton'
+import { CreditCard, CreditCardStatus } from '@/types/credit-card.types'
 import { formatCurrency } from '@/utils/common.utils'
 import { formatDate } from '@/utils/common.utils'
 import './CreditCardCard.css'
 
 interface CreditCardCardProps {
-  card: CreditCardType
-  onBlock?: (id: number) => void
-  onActivate?: (id: number) => void
+  card: CreditCard
   onView?: (id: number) => void
+  onStatusChange?: (id: number, status: CreditCardStatus) => Promise<void>
 }
 
 export const CreditCardCard: FC<CreditCardCardProps> = ({
   card,
-  onBlock,
-  onActivate,
   onView,
+  onStatusChange,
 }) => {
   const [isFlipped, setIsFlipped] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const isActive = card.status === 'ACTIVA'
 
   // Mask card number (show last 4 digits)
@@ -41,6 +42,25 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
     e.stopPropagation()
     action()
   }
+
+  const handleStatusChange = async (newStatus: CreditCardStatus) => {
+    if (newStatus === card.status) return
+    
+    setIsUpdating(true)
+    try {
+      await onStatusChange?.(card.id, newStatus)
+    } catch (error) {
+      // Error handled in parent
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Status options for dropdown
+  const statusOptions = [
+    { label: 'Activa', value: 'ACTIVA' },
+    { label: 'Bloqueada', value: 'BLOQUEADA' },
+  ]
 
   return (
     <div className="credit-card-container" onClick={handleClick}>
@@ -128,6 +148,21 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
                 </div>
               </div>
 
+              {/* Status Change */}
+              <div className="pt-2">
+                <label className="text-gray-500 text-xs block mb-1">Cambiar Estado</label>
+                <SelectButton
+                  value={card.status}
+                  options={statusOptions}
+                  optionLabel="label"
+                  optionValue="value"
+                  onChange={(e) => handleStatusChange(e.value as CreditCardStatus)}
+                  disabled={isUpdating}
+                  loading={isUpdating}
+                  className="w-full"
+                />
+              </div>
+
               <div className="pt-2 text-xs text-gray-400">
                 <p>Creada: {formatDate(card.createdAt)}</p>
                 <p>Actualizada: {formatDate(card.updatedAt)}</p>
@@ -144,25 +179,6 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
                 tooltipOptions={{ position: 'top' }}
                 onClick={(e) => handleAction(e, () => onView?.(card.id))}
               />
-              {isActive ? (
-                <Button
-                  icon="pi pi-lock"
-                  rounded
-                  severity="danger"
-                  tooltip="Bloquear"
-                  tooltipOptions={{ position: 'top' }}
-                  onClick={(e) => handleAction(e, () => onBlock?.(card.id))}
-                />
-              ) : (
-                <Button
-                  icon="pi pi-unlock"
-                  rounded
-                  severity="success"
-                  tooltip="Activar"
-                  tooltipOptions={{ position: 'top' }}
-                  onClick={(e) => handleAction(e, () => onActivate?.(card.id))}
-                />
-              )}
             </div>
           </div>
         </div>
