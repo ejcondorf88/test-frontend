@@ -1,68 +1,56 @@
 # 🚀 Frontend - UQ AI (Credit Card Service)
 
 Aplicación frontend para gestionar tarjetas de crédito y operaciones financieras.
-Conecta con el **Credit Card Service** en puerto **9000**.
+
+---
+
+## 📡 APIs del Backend
+
+| Servicio | Puerto | Endpoints |
+|----------|--------|-----------|
+| **Credit Card Service** | 9000 | `/api/v1/creditcards/*` |
+| **Operations Service** | 9093 | `/api/v1/credit-cards/active`, `/api/v1/operations` |
 
 ---
 
 ## 📋 Endpoints del Backend
 
-**Base URL:** `http://localhost:9000/api/v1/creditcards`
+### Credit Card Service (Puerto 9000)
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| GET | `/creditcards` | Listar todas las tarjetas |
-| GET | `/creditcards/{id}` | Obtener tarjeta por ID |
-| POST | `/creditcards` | Crear nueva tarjeta |
-| PATCH | `/creditcards/{id}/status` | Actualizar estado (ACTIVA/BLOQUEADA) |
-| PATCH | `/creditcards/{id}/balance` | Operar saldo (CONSUMO/PAGO) |
-| DELETE | `/creditcards/{id}` | Eliminar tarjeta |
+| `GET` | `/api/v1/creditcards` | Listar todas las tarjetas |
+| `GET` | `/api/v1/creditcards/{id}` | Obtener tarjeta por ID |
+| `POST` | `/api/v1/creditcards` | Crear nueva tarjeta |
+| `PATCH` | `/api/v1/creditcards/{id}/status` | Actualizar estado (ACTIVA/BLOQUEADA) |
+| `PATCH` | `/api/v1/creditcards/{id}/balance` | Actualizar saldo (CONSUMO/PAGO) |
+
+### Operations Service (Puerto 9093)
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/api/v1/credit-cards/active` | Listar solo tarjetas activas |
+| `POST` | `/api/v1/operations` | Procesar operación (CONSUMO/PAGO) |
 
 ---
 
-## 📋 Requisitos Previos
-
-1. **Node.js** (versión 18 o superior) - https://nodejs.org/
-2. **Credit Card Service** corriendo en `http://localhost:9000`
-
----
-
-## ⚡ Instalación Rápida
+## ⚡ Instalación
 
 ```bash
-# 1. Entra a la carpeta del proyecto
-cd frontend
-
-# 2. Instala las dependencias
+# 1. Instalar dependencias
 npm install
 
-# 3. Crea un archivo .env
-cp .env.example .env
-
-# 4. Inicia el proyecto
+# 2. Iniciar proyecto
 npm run dev
 ```
 
 ---
 
-## 🔧 Configuración
+## 🔧 Puertos
 
-### Desarrollo
-
-Edita `.env`:
-```env
-VITE_CREDIT_CARD_URL=http://localhost:9000/api/v1
-```
-
-### Producción (Docker)
-
-```bash
-# Levantar todo
-docker-compose up -d
-```
-
-- **Frontend**: http://localhost:3000
-- **Credit Card API**: http://localhost:9000
+- **Frontend**: http://localhost:3001
+- **Credit Card Service**: http://localhost:9000
+- **Operations Service**: http://localhost:9093
 
 ---
 
@@ -75,7 +63,7 @@ docker-compose up -d
 - ✅ Buscar por nombre o número
 - ✅ Ver detalles con efecto flip
 
-### 💳 Operaciones (CONSUMO/PAGO)
+### 💳 Operaciones
 - ✅ Seleccionar tarjeta activa
 - ✅ Registrar consumo (resta del saldo)
 - ✅ Registrar pago (suma al saldo)
@@ -90,10 +78,37 @@ docker-compose up -d
 | `npm install` | Instalar dependencias |
 | `npm run dev` | Iniciar desarrollo |
 | `npm run build` | Construir para producción |
-| `docker-compose up -d` | Levantar con Docker |
 
 ---
 
-**¡Listo!** 
-- Desarrollo: `npm run dev` → http://localhost:5173
-- Docker: `docker-compose up` → http://localhost:3000
+## 📦 Estructura
+
+```
+src/
+├── api/
+│   ├── endpoints.ts    # Credit Card + Operations APIs
+│   └── client.ts      # Axios clients
+├── hooks/
+│   ├── useCreditCards.ts    # Tarjetas
+│   └── useOperations.ts     # Operaciones
+├── pages/
+│   ├── CreditCardsPage.tsx  # Lista de tarjetas
+│   └── OperationsPage.tsx   # Operaciones
+└── types/
+    └── credit-card.types.ts
+```
+
+---
+
+## 🔄 Proxies (Vite)
+
+```typescript
+proxy: {
+  '/api':              → http://localhost:9000   // Credit Card Service
+  '/operations-api':   → http://localhost:9093  // Operations Service
+}
+```
+
+---
+
+**¡Listo!** `npm run dev` → http://localhost:3001

@@ -18,11 +18,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-      // Puerto 9092 - Credit Card Service (operaciones/active)
+      // Puerto 9093 - Operations Service (tarjetas activas, operaciones)
       '/operations-api': {
-        target: 'http://localhost:9092',
+        target: 'http://localhost:9093',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/operations-api/, '/api'),
       },
     },
   },
