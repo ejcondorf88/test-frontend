@@ -6,7 +6,6 @@
 import { FC, useState } from 'react'
 import { Tag } from 'primereact/tag'
 import { Button } from 'primereact/button'
-import { Dropdown } from 'primereact/dropdown'
 import { SelectButton } from 'primereact/selectbutton'
 import { CreditCard, CreditCardStatus } from '@/types/credit-card.types'
 import { formatCurrency } from '@/utils/common.utils'
@@ -68,10 +67,10 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
         
         {/* FRONT OF CARD */}
         <div className="credit-card-face credit-card-front">
-          <div className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-600 h-full flex flex-col justify-between">
+          <div className={`bg-gradient-to-br rounded-2xl p-6 shadow-2xl h-full flex flex-col justify-between ${isActive ? 'from-slate-800 via-slate-700 to-slate-900 border-slate-600' : 'from-gray-600 via-gray-500 to-gray-700 border-gray-400'}`}>
             {/* Header */}
             <div className="flex justify-between items-start">
-              <div className="w-12 h-8 bg-gradient-to-r from-amber-400 to-amber-600 rounded-md opacity-80" />
+              <div className={`w-12 h-8 rounded-md ${isActive ? 'bg-gradient-to-r from-amber-400 to-amber-600 opacity-80' : 'bg-gradient-to-r from-gray-400 to-gray-500 opacity-60'}`} />
               <Tag
                 value={isActive ? 'Activa' : 'Bloqueada'}
                 severity={isActive ? 'success' : 'danger'}
@@ -82,8 +81,8 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
 
             {/* Card Number */}
             <div className="mt-4">
-              <p className="text-white/80 text-sm mb-1">Número de tarjeta</p>
-              <p className="text-white text-xl font-mono tracking-widest">
+              <p className={`text-sm mb-1 ${isActive ? 'text-white/80' : 'text-gray-300/80'}`}>Número de tarjeta</p>
+              <p className={`text-xl font-mono tracking-widest ${isActive ? 'text-white' : 'text-gray-300'}`}>
                 {maskedNumber}
               </p>
             </div>
@@ -91,21 +90,21 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
             {/* Card Holder & Expiry */}
             <div className="flex justify-between items-end">
               <div>
-                <p className="text-white/60 text-xs">Titular</p>
-                <p className="text-white font-semibold text-lg uppercase tracking-wide">
+                <p className={`text-xs ${isActive ? 'text-white/60' : 'text-gray-400/60'}`}>Titular</p>
+                <p className={`text-lg uppercase tracking-wide ${isActive ? 'text-white font-semibold' : 'text-gray-300 font-semibold'}`}>
                   {card.holderName}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-white/60 text-xs">Creada</p>
-                <p className="text-white text-sm">
+                <p className={`text-xs ${isActive ? 'text-white/60' : 'text-gray-400/60'}`}>Creada</p>
+                <p className={`text-sm ${isActive ? 'text-white' : 'text-gray-300'}`}>
                   {formatDate(card.createdAt, { month: 'short', year: 'numeric' })}
                 </p>
               </div>
             </div>
 
             {/* Flip hint */}
-            <div className="absolute bottom-3 right-4 text-white/40 text-xs">
+            <div className={`absolute bottom-3 right-4 text-xs ${isActive ? 'text-white/40' : 'text-gray-400/40'}`}>
               <i className="pi pi-sync mr-1" />
               Click para ver detalles
             </div>
@@ -148,19 +147,25 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
                 </div>
               </div>
 
-              {/* Status Change */}
+              {/* Status Change - Only allow change for active cards */}
               <div className="pt-2">
-                <label className="text-gray-500 text-xs block mb-1">Cambiar Estado</label>
+                <label className="text-gray-500 text-xs block mb-1">
+                  {isActive ? 'Cambiar Estado' : 'Estado'}
+                </label>
                 <SelectButton
                   value={card.status}
                   options={statusOptions}
                   optionLabel="label"
                   optionValue="value"
                   onChange={(e) => handleStatusChange(e.value as CreditCardStatus)}
-                  disabled={isUpdating}
-                  loading={isUpdating}
+                  disabled={isUpdating || !isActive}
                   className="w-full"
                 />
+                {!isActive && (
+                  <small className="text-red-500 text-xs mt-1 block">
+                    Tarjeta bloqueada. Contacte al administrador para desbloquear.
+                  </small>
+                )}
               </div>
 
               <div className="pt-2 text-xs text-gray-400">

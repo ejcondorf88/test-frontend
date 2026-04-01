@@ -4,10 +4,10 @@
  */
 
 import { apiClient } from './client'
-import { CreditCard, CreditCardListResponse, CreditCardFilters } from '@/types/credit-card.types'
+import { CreditCard, CreditCardListResponse, CreditCardFilters, CreditCardCreateRequest } from '@/types/credit-card.types'
 
 // Mock data for development
-const mockCards: CreditCard[] = [
+let mockCards: CreditCard[] = [
   {
     id: 1,
     cardNumber: '4532015112830366',
@@ -60,6 +60,8 @@ const mockCards: CreditCard[] = [
   },
 ]
 
+let nextId = 6
+
 export const creditCardApi = {
   getAll: async (filters?: CreditCardFilters): Promise<CreditCardListResponse> => {
     // In development, return mock data
@@ -110,8 +112,9 @@ export const creditCardApi = {
     return apiClient.get<CreditCardListResponse>(url)
   },
 
-  getById: async (id: number) => {
+  getById: async (id: number): Promise<CreditCard> => {
     if (import.meta.env.DEV) {
+      await new Promise(resolve => setTimeout(resolve, 300))
       const card = mockCards.find(c => c.id === id)
       if (!card) throw new Error('Tarjeta no encontrada')
       return card
@@ -119,27 +122,68 @@ export const creditCardApi = {
     return apiClient.get<CreditCard>(`/credit-cards/${id}`)
   },
 
-  block: async (id: number) => {
+  create: async (data: CreditCardCreateRequest): Promise<CreditCard> => {
     if (import.meta.env.DEV) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+      const now = new Date().toISOString()
+      const newCard: CreditCard = {
+        id: nextId++,
+        ...data,
+        createdAt: now,
+        updatedAt: now,
+      }
+      mockCards.unshift(newCard) // Add to beginning
+      return newCard
+    }
+    return apiClient.post<CreditCard>('/credit-cards', data)
+  },
+
+  block: async (id: number): Promise<CreditCard> => {
+    if (import.meta.env.DEV) {
+      await new Promise(resolve => setTimeout(resolve, 300))
       const card = mockCards.find(c => c.id === id)
       if (card) {
         card.status = 'BLOQUEADA'
         card.updatedAt = new Date().toISOString()
       }
-      return card
+      return card!
     }
     return apiClient.patch<CreditCard>(`/credit-cards/${id}/block`, {})
   },
 
-  activate: async (id: number) => {
+  activate: async (id: number): Promise<CreditCard> => {
     if (import.meta.env.DEV) {
+      await new Promise(resolve => setTimeout(resolve, 300))
       const card = mockCards.find(c => c.id === id)
       if (card) {
         card.status = 'ACTIVA'
         card.updatedAt = new Date().toISOString()
       }
-      return card
+      return card!
     }
     return apiClient.patch<CreditCard>(`/credit-cards/${id}/activate`, {})
+  },
+
+  // Update status (new unified endpoint)
+  updateStatus: async (id: number, status: 'ACTIVA' | 'BLOQUEADA'): Promise<CreditCard> => {
+    if (import.meta.env.DEV) {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      const card = mockCards.find(c => c.id === id)
+      if (card) {
+        card.status = status
+        card.updatedAt = new Date().toISOString()
+      }
+      return card!
+    }
+    return apiClient.patch<CreditCard>(`/credit-cards/${id}/status`, { status })
+  },
+
+  delete: async (id: number): Promise<void> => {
+    if (import.meta.env.DEV) {
+      await new Promise(resolve => setTimeout(resolve, 300))
+      mockCards = mockCards.filter(c => c.id !== id)
+      return
+    }
+    return apiClient.delete<void>(`/credit-cards/${id}`)
   },
 }

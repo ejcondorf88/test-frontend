@@ -53,21 +53,10 @@ export const CreditCardList: FC<CreditCardListProps> = ({ onViewCard }) => {
     }
   }
 
-  // Handle block confirmation
-  const handleBlock = async (id: number) => {
-    if (confirm('¿Está seguro de que desea bloquear esta tarjeta?')) {
-      try {
-        await blockCard(id)
-      } catch {
-        // Error handled in hook
-      }
-    }
-  }
-
-  // Handle activate confirmation
-  const handleActivate = async (id: number) => {
+  // Handle status change
+  const handleStatusChange = async (id: number, status: 'ACTIVA' | 'BLOQUEADA') => {
     try {
-      await activateCard(id)
+      await updateStatus(id, status)
     } catch {
       // Error handled in hook
     }
@@ -146,8 +135,7 @@ export const CreditCardList: FC<CreditCardListProps> = ({ onViewCard }) => {
                 key={card.id}
                 card={card}
                 onView={onViewCard}
-                onBlock={handleBlock}
-                onActivate={handleActivate}
+                onStatusChange={handleStatusChange}
               />
             ))}
           </div>
