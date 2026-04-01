@@ -1,16 +1,24 @@
 /**
- * Query Keys and Hooks
- * Centralized query keys and reusable React Query hooks
- * Provides type-safe query keys and typed query/mutation hooks
+ * Query Keys and Hooks - Credit Card Service
+ * Documentación: http://localhost:9000/api/v1/creditcards
+ * 
+ * Endpoints del servicio:
+ * - GET    /creditcards          - Listar todas las tarjetas
+ * - GET    /creditcards/{id}     - Obtener tarjeta por ID
+ * - POST   /creditcards           - Crear tarjeta
+ * - PATCH  /creditcards/{id}/status   - Actualizar estado
+ * - PATCH  /creditcards/{id}/balance  - Operar saldo (CONSUMO/PAGO)
+ * - DELETE /creditcards/{id}     - Eliminar tarjeta
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { creditCardApi, operationsApi } from '@/api/endpoints'
+import { 
+  creditCardApi, 
+  OperationType 
+} from '@/api/endpoints'
 import { 
   CreditCardFilters, 
-  CreditCardCreateRequest,
-  OperationFilters, 
-  OperationCreateRequest 
+  CreditCardCreateRequest
 } from '@/types/credit-card.types'
 
 // ============================================================================
@@ -18,27 +26,20 @@ import {
 // ============================================================================
 
 export const queryKeys = {
-  // Credit Card Keys
   creditCards: {
     all: ['creditCards'] as const,
     list: (filters?: CreditCardFilters) => [...queryKeys.creditCards.all, 'list', filters] as const,
     detail: (id: number) => [...queryKeys.creditCards.all, 'detail', id] as const,
     active: () => [...queryKeys.creditCards.all, 'active'] as const,
   },
-  // Operation Keys
-  operations: {
-    all: ['operations'] as const,
-    list: (filters?: OperationFilters) => [...queryKeys.operations.all, 'list', filters] as const,
-    byCard: (cardId: number) => [...queryKeys.operations.all, 'byCard', cardId] as const,
-  },
 } as const
 
 // ============================================================================
-// Credit Card Hooks
+// Query Hooks
 // ============================================================================
 
 /**
- * Hook to fetch all credit cards with filters
+ * GET /creditcards - Obtiene todas las tarjetas de crédito
  */
 export function useCreditCards(filters?: CreditCardFilters) {
   return useQuery({
@@ -48,29 +49,32 @@ export function useCreditCards(filters?: CreditCardFilters) {
 }
 
 /**
- * Hook to fetch a single credit card by ID
+ * GET /creditcards/{id} - Obtiene una tarjeta específica por su ID
  */
 export function useCreditCardById(id: number) {
   return useQuery({
     queryKey: queryKeys.creditCards.detail(id),
     queryFn: () => creditCardApi.getById(id),
-    enabled: !!id, // Only fetch if id is provided
+    enabled: !!id,
   })
 }
 
 /**
- * Hook to fetch active credit cards
+ * GET /credit-cards/active - Obtiene solo tarjetas activas (puerto 9092)
  */
-export function useActiveCards(limit: number = 100) {
+export function useActiveCards() {
   return useQuery({
     queryKey: queryKeys.creditCards.active(),
-    queryFn: () => creditCardApi.getAll({ status: 'ACTIVA', limit }),
+    queryFn: () => creditCardApi.getActive(),
   })
 }
 
+// ============================================================================
+// Mutation Hooks
+// ============================================================================
+
 /**
- * Hook to create a new credit card
- * Includes cache invalidation
+ * POST /creditcards - Crea una nueva tarjeta de crédito
  */
 export function useCreateCreditCard() {
   const queryClient = useQueryClient()
@@ -78,15 +82,13 @@ export function useCreateCreditCard() {
   return useMutation({
     mutationFn: (data: CreditCardCreateRequest) => creditCardApi.create(data),
     onSuccess: () => {
-      // Invalidate credit cards list to refetch
       queryClient.invalidateQueries({ queryKey: queryKeys.creditCards.all })
     },
   })
 }
 
 /**
- * Hook to update credit card status
- * Includes cache invalidation
+ * PATCH /creditcards/{id}/status - Actualiza el estado de una tarjeta
  */
 export function useUpdateCreditCardStatus() {
   const queryClient = useQueryClient()
@@ -101,8 +103,24 @@ export function useUpdateCreditCardStatus() {
 }
 
 /**
- * Hook to delete a credit card
- * Includes cache invalidation
+ * PATCH /creditcards/{id}/balance - Opera el saldo (CONSUMO o PAGO)
+ * - CONSUMO: Resta del saldo disponible
+ * - PAGO: Suma al saldo disponible
+ */
+export function useUpdateBalance() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, amount, operation }: { id: number; amount: number; operation: OperationType }) =>
+      creditCardApi.updateBalance(id, { amount, operation }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.creditCards.all })
+    },
+  })
+}
+
+/**
+ * DELETE /creditcards/{id} - Elimina una tarjeta de crédito
  */
 export function useDeleteCreditCard() {
   const queryClient = useQueryClient()
@@ -111,36 +129,6 @@ export function useDeleteCreditCard() {
     mutationFn: (id: number) => creditCardApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.creditCards.all })
-    },
-  })
-}
-
-// ============================================================================
-// Operation Hooks
-// ============================================================================
-
-/**
- * Hook to fetch all operations with filters
- */
-export function useOperations(filters?: OperationFilters) {
-  return useQuery({
-    queryKey: queryKeys.operations.list(filters),
-    queryFn: () => operationsApi.getAll(filters),
-  })
-}
-
-/**
- * Hook to create a new operation
- * Includes cache invalidation
- */
-export function useCreateOperation() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: OperationCreateRequest) => operationsApi.create(data),
-    onSuccess: () => {
-      // Invalidate operations list to refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
     },
   })
 }

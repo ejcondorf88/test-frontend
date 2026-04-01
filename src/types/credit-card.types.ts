@@ -1,76 +1,28 @@
 /**
- * Operations Domain Types
- * Types for credit card operations (consumption and payments)
+ * CreditCard Types
+ * Corresponds to Credit Card Service API
+ * Base URL: http://localhost:9000/api/v1/creditcards
  */
 
-export type OperationType = 'CONSUMO' | 'PAGO'
-
-export interface Operation {
-  id: number
-  cardId: number
-  cardNumber: string
-  type: OperationType
-  amount: number
-  date: string
-  description: string
-}
-
-export interface OperationListResponse {
-  data: Operation[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
-
-export interface OperationFilters {
-  cardId?: number
-  type?: OperationType
-  startDate?: string
-  endDate?: string
-  page?: number
-  limit?: number
-}
-
-export interface OperationCreateRequest {
-  cardId: number
-  type: OperationType
-  amount: number
-  description: string
-}
-
-export interface OperationFormData {
-  cardId: number | null
-  type: OperationType
-  amount: string
-  description: string
-}
-
-export interface OperationFormErrors {
-  cardId?: string
-  type?: string
-  amount?: string
-  description?: string
-}
-
-/**
- * CreditCard Domain Types
- * Corresponds to backend CreditCardResponseDTO
- */
-
+// Status possible values
 export type CreditCardStatus = 'ACTIVA' | 'BLOQUEADA'
 
+// Operation types for balance updates
+export type OperationType = 'CONSUMO' | 'PAGO'
+
+// Credit Card entity
 export interface CreditCard {
   id: number
-  cardNumber: string
+  cardNumber: string      // Masked: "****3456"
   holderName: string
   creditLimit: number
   availableBalance: number
   status: CreditCardStatus
-  createdAt: string
-  updatedAt: string
+  createdAt: string      // ISO 8601
+  updatedAt: string      // ISO 8601
 }
 
+// List response
 export interface CreditCardListResponse {
   data: CreditCard[]
   total: number
@@ -79,6 +31,7 @@ export interface CreditCardListResponse {
   totalPages: number
 }
 
+// Filters for list endpoint
 export interface CreditCardFilters {
   status?: CreditCardStatus
   search?: string
@@ -86,16 +39,22 @@ export interface CreditCardFilters {
   limit?: number
 }
 
-// DTO for creating a new credit card (matches backend)
+// Create request
 export interface CreditCardCreateRequest {
-  cardNumber: string
+  cardNumber: string      // Full number (13-19 digits)
   holderName: string
   creditLimit: number
   availableBalance: number
   status: CreditCardStatus
 }
 
-// Form validation
+// Update balance request (CONSUMO/PAGO)
+export interface UpdateBalanceRequest {
+  amount: number          // Must be > 0
+  operation: OperationType
+}
+
+// Form types
 export interface CreditCardFormData {
   cardNumber: string
   holderName: string
@@ -110,4 +69,19 @@ export interface CreditCardFormErrors {
   creditLimit?: string
   availableBalance?: string
   status?: string
+}
+
+// Form for operations (CONSUMO/PAGO)
+export interface OperationFormData {
+  cardId: number | null
+  operation: OperationType
+  amount: string
+  description: string
+}
+
+export interface OperationFormErrors {
+  cardId?: string
+  operation?: string
+  amount?: string
+  description?: string
 }

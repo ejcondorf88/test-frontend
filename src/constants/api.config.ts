@@ -1,24 +1,26 @@
 /**
  * API Configuration
- * Centralized configuration for Axios and API endpoints
+ * 
+ * Puerto 9000 - Credit Card Service (tarjetas)
+ * Puerto 9092 - Credit Card Service (operaciones/active)
  */
 
-// Development: Spring Boot running on port 8080
-// Production (Docker): goes through nginx proxy at /api/
-const getBaseUrl = (): string => {
-  if (import.meta.env.PROD) {
-    // Production Docker: use relative path through nginx proxy
-    return '/api/v1'
-  }
-  // Development: direct connection to backend
-  return import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+const isDev = import.meta.env.DEV
+
+// Credit Card Service - puerto 9000 (tarjetas)
+export const CREDIT_CARD_API = {
+  BASE_URL: isDev ? '/api/v1' : '/api/v1',
+  TIMEOUT: 30000,
 }
 
-export const API_CONFIG = {
-  BASE_URL: getBaseUrl(),
+// Operations API - puerto 9092 (tarjetas activas)
+export const OPERATIONS_API = {
+  BASE_URL: isDev ? '/operations-api' : '/operations-api',
   TIMEOUT: 30000,
-} as const
+}
 
-export const API_ENDPOINTS = {
-  CREDIT_CARDS: '/credit-cards',
+// Legacy support
+export const API_CONFIG = {
+  BASE_URL: '',
+  TIMEOUT: 30000,
 } as const

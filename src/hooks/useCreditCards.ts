@@ -62,10 +62,10 @@ export function useCreditCards(): UseCreditCardsReturn {
     queryFn: () => creditCardApi.getAll(filters),
   })
   
-  // Extract response data
-  const cards = data?.data ?? []
-  const totalPages = data?.totalPages ?? 0
-  const total = data?.total ?? 0
+  // Extract response data - API returns array directly
+  const cards: CreditCard[] = Array.isArray(data) ? data : []
+  const totalPages = 1
+  const total = cards.length
   
   // Mutation for updating status
   const updateStatusMutation = useMutation({

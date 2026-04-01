@@ -27,8 +27,8 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
   const [isUpdating, setIsUpdating] = useState(false)
   const isActive = card.status === 'ACTIVA'
 
-  // Mask card number (show last 4 digits)
-  const maskedNumber = `**** **** **** ${card.cardNumber.slice(-4)}`
+  // Card number is already masked by the backend (e.g., "****3456")
+  const displayNumber = card.cardNumber
 
   // Calculate usage percentage
   const usagePercent = ((card.creditLimit - card.availableBalance) / card.creditLimit) * 100
@@ -83,7 +83,7 @@ export const CreditCardCard: FC<CreditCardCardProps> = ({
             <div className="mt-4">
               <p className={`text-sm mb-1 ${isActive ? 'text-white/80' : 'text-gray-300/80'}`}>Número de tarjeta</p>
               <p className={`text-xl font-mono tracking-widest ${isActive ? 'text-white' : 'text-gray-300'}`}>
-                {maskedNumber}
+                {displayNumber}
               </p>
             </div>
 
