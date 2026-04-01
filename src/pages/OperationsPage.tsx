@@ -1,109 +1,68 @@
 /**
  * Operations Page
- * Page for managing credit card operations (consumption and payments)
+ * Manejo de operaciones (CONSUMO/PAGO) usando Operations Service
  */
 
-import { FC, useRef, useMemo } from 'react'
+import { FC, useRef } from 'react'
 import { Card } from 'primereact/card'
-import { DataTable } from 'primereact/datatable'
-import { Column } from 'primereact/column'
 import { Dropdown } from 'primereact/dropdown'
 import { InputNumber } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
 import { Button } from 'primereact/button'
 import { Toast } from 'primereact/toast'
-import { useOperations, useOperationForm } from '@/hooks'
-import { OperationType } from '@/types/credit-card.types'
+import { ProgressSpinner } from 'primereact/progressspinner'
+import { useOperations } from '@/hooks'
 
 export const OperationsPage: FC = () => {
   const toast = useRef<Toast>(null)
   
-  // Data fetching for operations list
   const {
-    operations,
     activeCards,
-    isLoading,
+    isLoadingCards,
+    isProcessing,
     error,
-    totalConsumption,
-    totalPayments,
-    createOperation,
-    isSubmitting: isOperationsSubmitting,
-  } = useOperations()
-  
-  // Form logic - pass activeCards and createOperation
-  const {
     formData,
     formErrors,
     cardOptions,
-    typeOptions,
-    handleCardChange,
-    handleTypeChange,
-    handleAmountChange,
-    handleDescriptionChange,
+    setFormField,
     handleSubmit,
-  } = useOperationForm({
-    activeCards,
-    isSubmitting: isOperationsSubmitting,
-    error,
-    onSubmit: createOperation,
-  })
+    resetForm,
+  } = useOperations()
 
-  // Alias for consistent naming in the component
-  const isSubmitting = isOperationsSubmitting
+  // Operation type options
+  const operationOptions = [
+    { label: 'Consumo (-)', value: 'CONSUMO' },
+    { label: 'Pago (+)', value: 'PAGO' },
+  ]
 
-  // Format currency
-  const formatCurrency = useMemo(() => (value: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-    }).format(value)
-  }, [])
-
-  // Table templates
-  const typeBodyTemplate = (rowData: { type: OperationType }) => {
-    const isConsumo = rowData.type === 'CONSUMO'
-    return (
-      <span className={`p-tag ${isConsumo ? 'p-tag-warning' : 'p-tag-success'}`}>
-        {isConsumo ? 'Consumo' : 'Pago'}
-      </span>
-    )
-  }
-
-  const amountBodyTemplate = (rowData: { amount: number; type: OperationType }) => {
-    const isConsumo = rowData.type === 'CONSUMO'
-    return (
-      <span className={isConsumo ? 'text-red-600' : 'text-green-600'}>
-        {isConsumo ? '-' : '+'}{formatCurrency(rowData.amount)}
-      </span>
-    )
-  }
-
-  const dateBodyTemplate = (rowData: { date: string }) => {
-    return new Date(rowData.date).toLocaleDateString('es-MX')
-  }
-
-  const cardBodyTemplate = (rowData: { cardNumber: string }) => {
-    return rowData.cardNumber
-  }
-
-  // Handle form submit with toast notification
+  // Submit handler
   const onSubmit = async () => {
     try {
       await handleSubmit()
       toast.current?.show({
         severity: 'success',
-        summary: 'Operación creada',
-        detail: 'La operación se ha registrado correctamente',
+        summary: 'Operación exitosa',
+        detail: formData.operation === 'CONSUMO' 
+          ? 'Consumo registrado' 
+          : 'Pago registrado',
         life: 3000,
       })
     } catch (err) {
       toast.current?.show({
         severity: 'error',
         summary: 'Error',
-        detail: 'No se pudo crear la operación',
+        detail: error?.message || 'No se pudo completar',
         life: 3000,
       })
     }
+  }
+
+  if (isLoadingCards) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <ProgressSpinner />
+      </div>
+    )
   }
 
   return (
@@ -113,135 +72,99 @@ export const OperationsPage: FC = () => {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Operaciones</h1>
         <p className="text-gray-600 mt-2">
-          Registra y gestiona las operaciones de tus tarjetas de crédito
+          Registra consumos y pagos en tus tarjetas de crédito
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="shadow-lg" title="Total Consumos">
-          <p className="text-3xl font-bold text-red-600">
-            {formatCurrency(totalConsumption)}
-          </p>
-          <p className="text-sm text-gray-500 mt-2">Operaciones de consumo</p>
-        </Card>
+      {error && (
+        <div className="p-4 mb-4 bg-red-100 border-round">
+          <span className="text-red-700">{error.message}</span>
+        </div>
+      )}
 
-        <Card className="shadow-lg" title="Total Pagos">
-          <p className="text-3xl font-bold text-green-600">
-            {formatCurrency(totalPayments)}
-          </p>
-          <p className="text-sm text-gray-500 mt-2">Operaciones de pago</p>
-        </Card>
-
-        <Card className="shadow-lg" title="Operaciones">
-          <p className="text-3xl font-bold text-blue-600">{operations.length}</p>
-          <p className="text-sm text-gray-500 mt-2">Total de operaciones</p>
-        </Card>
-      </div>
-
-      {/* Create Operation Form */}
+      {/* Form */}
       <Card className="shadow-lg mb-6" title="Nueva Operación">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card Selection */}
           <div className="flex flex-column gap-2">
-            <label htmlFor="card" className="font-medium">
-              Tarjeta *
-            </label>
+            <label className="font-medium">Tarjeta *</label>
             <Dropdown
-              id="card"
               value={formData.cardId}
               options={cardOptions}
-              onChange={(e) => handleCardChange(e.value)}
+              onChange={(e) => setFormField('cardId', e.value)}
               placeholder="Selecciona una tarjeta"
               className={formErrors.cardId ? 'p-invalid' : ''}
               filter
             />
-            {formErrors.cardId && (
-              <small className="p-error">{formErrors.cardId}</small>
-            )}
+            {formErrors.cardId && <small className="p-error">{formErrors.cardId}</small>}
           </div>
 
+          {/* Operation Type */}
           <div className="flex flex-column gap-2">
-            <label htmlFor="type" className="font-medium">
-              Tipo de Operación *
-            </label>
+            <label className="font-medium">Tipo *</label>
             <Dropdown
-              id="type"
-              value={formData.type}
-              options={typeOptions}
-              onChange={(e) => handleTypeChange(e.value)}
+              value={formData.operation}
+              options={operationOptions}
+              onChange={(e) => setFormField('operation', e.value)}
             />
           </div>
 
+          {/* Amount */}
           <div className="flex flex-column gap-2">
-            <label htmlFor="amount" className="font-medium">
-              Monto *
-            </label>
+            <label className="font-medium">Monto *</label>
             <InputNumber
-              id="amount"
               value={formData.amount ? parseFloat(formData.amount) : null}
-              onChange={(e) => handleAmountChange(e.value)}
+              onChange={(e) => setFormField('amount', e.value?.toString() || '')}
               mode="currency"
               currency="MXN"
-              locale="es-MX"
               className={formErrors.amount ? 'p-invalid' : ''}
             />
-            {formErrors.amount && (
-              <small className="p-error">{formErrors.amount}</small>
-            )}
+            {formErrors.amount && <small className="p-error">{formErrors.amount}</small>}
           </div>
 
+          {/* Description */}
           <div className="flex flex-column gap-2">
-            <label htmlFor="description" className="font-medium">
-              Descripción *
-            </label>
+            <label className="font-medium">Descripción {formData.operation === 'CONSUMO' ? '*' : ''}</label>
             <InputText
-              id="description"
               value={formData.description}
-              onChange={(e) => handleDescriptionChange(e.target.value)}
-              placeholder="Ej: Supermercado, Restaurante, Pago mínimo"
+              onChange={(e) => setFormField('description', e.target.value)}
+              placeholder={formData.operation === 'CONSUMO' ? "Ej: Supermercado" : "Opcional"}
               className={formErrors.description ? 'p-invalid' : ''}
             />
-            {formErrors.description && (
-              <small className="p-error">{formErrors.description}</small>
-            )}
+            {formErrors.description && <small className="p-error">{formErrors.description}</small>}
           </div>
         </div>
 
-        <div className="mt-4 flex justify-content-end">
+        <div className="mt-4 flex justify-content-end gap-2">
+          <Button label="Limpiar" icon="pi pi-times" severity="secondary" onClick={resetForm} disabled={isProcessing} />
           <Button
-            label="Registrar Operación"
-            icon="pi pi-plus"
+            label={isProcessing ? 'Procesando...' : 'Registrar'}
+            icon={isProcessing ? 'pi pi-spinner' : 'pi pi-plus'}
             onClick={onSubmit}
-            loading={isSubmitting}
+            loading={isProcessing}
           />
         </div>
       </Card>
 
-      {/* Error Message */}
-      {error && (
-        <div className="p-4 mb-4 bg-red-100 border-round p-3">
-          <span className="text-red-700">{error.message || 'Error al cargar las operaciones'}</span>
-        </div>
-      )}
-
-      {/* Operations Table */}
-      <Card className="shadow-lg" title="Operaciones Registradas">
-        <DataTable
-          value={operations}
-          loading={isLoading}
-          paginator
-          rows={10}
-          emptyMessage="No hay operaciones registradas"
-          className="p-datatable-sm"
-          sortField="date"
-          sortOrder={-1}
-        >
-          <Column field="type" header="Tipo" body={typeBodyTemplate} sortable />
-          <Column field="cardNumber" header="Tarjeta" body={cardBodyTemplate} />
-          <Column field="amount" header="Monto" body={amountBodyTemplate} sortable />
-          <Column field="description" header="Descripción" />
-          <Column field="date" header="Fecha" body={dateBodyTemplate} sortable />
-        </DataTable>
+      {/* Active Cards */}
+      <Card className="shadow-lg" title="Tarjetas Activas">
+        {activeCards.length === 0 ? (
+          <p className="text-gray-500">No hay tarjetas activas</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeCards.map((card) => (
+              <div key={card.id} className="p-4 border rounded-lg">
+                <div className="font-semibold">{card.holderName}</div>
+                <div className="text-sm text-gray-500">{card.cardNumber}</div>
+                <div className="text-sm mt-2">
+                  <span className={card.availableBalance < card.creditLimit * 0.2 ? 'text-red-600' : 'text-green-600'}>
+                    Disponible: ${card.availableBalance.toLocaleString('es-MX')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   )

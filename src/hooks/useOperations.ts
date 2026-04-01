@@ -1,151 +1,158 @@
 /**
  * useOperations Hook
- * Custom hook for operations management
- * Handles: fetching operations, creating operations, active credit cards
- * Internally uses React Query for data fetching
+ * Manejo de operaciones (CONSUMO/PAGO)
+ * 
+ * Usa:
+ * - Operations Service (9093): getActive, createOperation
+ * - Credit Card Service (9000): updateBalance
  */
 
 import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { operationsApi } from '@/api/endpoints'
-import { Operation, OperationFilters, OperationCreateRequest, CreditCard } from '@/types/credit-card.types'
-import { queryKeys, useActiveCards } from './useQueries'
+import { creditCardApi, OperationRequest, OperationResponse } from '@/api/endpoints'
+import { CreditCard, OperationFormData, OperationFormErrors } from '@/types/credit-card.types'
 
 interface UseOperationsReturn {
   // State
-  operations: Operation[]
   activeCards: CreditCard[]
-  isLoading: boolean
-  isFetching: boolean
-  isSubmitting: boolean
+  isLoadingCards: boolean
+  isProcessing: boolean
   error: Error | null
-  filters: OperationFilters
   
-  // Pagination
-  page: number
-  totalPages: number
-  total: number
+  // Form
+  formData: OperationFormData
+  formErrors: OperationFormErrors
+  cardOptions: { label: string; value: number }[]
   
-  // Actions
-  setFilters: (filters: Partial<OperationFilters>) => void
-  setPage: (page: number) => void
-  createOperation: (data: OperationCreateRequest) => Promise<void>
-  
-  // Helpers
-  refetch: () => Promise<void>
-  isEmpty: boolean
-  
-  // Computed
-  totalConsumption: number
-  totalPayments: number
+  // Handlers
+  setFormField: (field: keyof OperationFormData, value: string | number | null) => void
+  handleSubmit: () => Promise<OperationResponse | null>
+  resetForm: () => void
+}
+
+const initialFormData: OperationFormData = {
+  cardId: null,
+  operation: 'CONSUMO',
+  amount: '',
+  description: '',
 }
 
 export function useOperations(): UseOperationsReturn {
   const queryClient = useQueryClient()
   
-  // Filters state
-  const [filters, setFiltersState] = useState<OperationFilters>({
-    page: 1,
-    limit: 10,
+  // Fetch active cards from Operations Service (9093)
+  const { data: activeCards = [], isLoading: isLoadingCards } = useQuery({
+    queryKey: ['activeCards'],
+    queryFn: () => creditCardApi.getActive(),
   })
-  
-  // Compute current page
-  const page = filters.page ?? 1
-  
-  // Build query key with filters
-  const operationsQueryKey = useMemo(
-    () => queryKeys.operations.list(filters),
-    [filters]
-  )
-  
-  // React Query for fetching operations
-  const { data: operationsData, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: operationsQueryKey,
-    queryFn: () => operationsApi.getAll(filters),
-  })
-  
-  // Extract operations data
-  const operations = operationsData?.data ?? []
-  const totalPages = operationsData?.totalPages ?? 0
-  const total = operationsData?.total ?? 0
-  
-  // React Query for fetching active cards using useActiveCards hook
-  const { data: activeCardsData } = useActiveCards(100)
-  
-  const activeCards = activeCardsData?.data ?? []
-  
-  // Mutation for creating operations
-  const createOperationMutation = useMutation({
-    mutationFn: (data: OperationCreateRequest) => operationsApi.create(data),
+
+  // Mutation for operations via Operations Service (9093)
+  const operationMutation = useMutation({
+    mutationFn: async (data: OperationRequest): Promise<OperationResponse> => {
+      // Check if balance update or full operation
+      try {
+        return await creditCardApi.createOperation(data)
+      } catch {
+        // Fallback: use balance endpoint directly
+        const card = activeCards.find(c => c.id === data.cardId)
+        if (!card) throw new Error('Tarjeta no encontrada')
+        
+        await creditCardApi.updateBalance(data.cardId, {
+          amount: data.amount,
+          operation: data.operation,
+        })
+        
+        return {
+          cardId: data.cardId,
+          previousBalance: card.availableBalance,
+          newBalance: data.operation === 'CONSUMO' 
+            ? card.availableBalance - data.amount 
+            : card.availableBalance + data.amount,
+          amount: data.amount,
+          operation: data.operation,
+          processedAt: new Date().toISOString(),
+        }
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+      // Invalidate active cards to refetch
+      queryClient.invalidateQueries({ queryKey: ['activeCards'] })
     },
   })
   
-  // Set filters - resets to page 1 on filter change
-  const setFilters = useCallback((newFilters: Partial<OperationFilters>) => {
-    setFiltersState((prev) => {
-      const updated = { ...prev, ...newFilters }
-      if (newFilters.cardId !== undefined || newFilters.type !== undefined) {
-        updated.page = 1
-      }
-      return updated
+  // Form state
+  const [formData, setFormData] = useState<OperationFormData>(initialFormData)
+  const [formErrors, setFormErrors] = useState<OperationFormErrors>({})
+
+  // Card options for dropdown
+  const cardOptions = useMemo(() => 
+    activeCards.map((card: CreditCard) => ({
+      label: `${card.cardNumber} - ${card.holderName}`,
+      value: card.id,
+    })),
+    [activeCards]
+  )
+
+  // Validate form
+  const validate = useCallback((): boolean => {
+    const errors: OperationFormErrors = {}
+    
+    if (!formData.cardId) {
+      errors.cardId = 'Selecciona una tarjeta'
+    }
+    
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      errors.amount = 'Ingresa un monto válido'
+    }
+
+    if (formData.operation === 'CONSUMO' && !formData.description.trim()) {
+      errors.description = 'Ingresa una descripción'
+    }
+    
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }, [formData])
+
+  // Set form field
+  const setFormField = useCallback((field: keyof OperationFormData, value: string | number | null) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    if (formErrors[field as keyof OperationFormErrors]) {
+      setFormErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+  }, [formErrors])
+
+  // Submit handler
+  const handleSubmit = useCallback(async (): Promise<OperationResponse | null> => {
+    if (!validate()) return null
+
+    const result = await operationMutation.mutateAsync({
+      cardId: formData.cardId!,
+      amount: parseFloat(formData.amount),
+      operation: formData.operation,
     })
+
+    setFormData(initialFormData)
+    setFormErrors({})
+    return result
+  }, [formData, validate, operationMutation])
+
+  // Reset form
+  const resetForm = useCallback(() => {
+    setFormData(initialFormData)
+    setFormErrors({})
   }, [])
-  
-  // Set page
-  const setPage = useCallback((newPage: number) => {
-    setFiltersState((prev) => ({ ...prev, page: newPage }))
-  }, [])
-  
-  // Create operation
-  const createOperation = useCallback(async (data: OperationCreateRequest) => {
-    await createOperationMutation.mutateAsync(data)
-  }, [createOperationMutation])
-  
-  // Refetch
-  const refetchOperations = useCallback(async () => {
-    await refetch()
-  }, [refetch])
-  
-  // Computed values
-  const totalConsumption = useMemo(
-    () => operations.filter(op => op.type === 'CONSUMO').reduce((sum, op) => sum + op.amount, 0),
-    [operations]
-  )
-  
-  const totalPayments = useMemo(
-    () => operations.filter(op => op.type === 'PAGO').reduce((sum, op) => sum + op.amount, 0),
-    [operations]
-  )
-  
+
   return {
-    // State
-    operations,
     activeCards,
-    isLoading,
-    isFetching,
-    isSubmitting: createOperationMutation.isPending,
-    error: error as Error | null,
-    filters,
-    
-    // Pagination
-    page,
-    totalPages,
-    total,
-    
-    // Actions
-    setFilters,
-    setPage,
-    createOperation,
-    
-    // Helpers
-    refetch: refetchOperations,
-    isEmpty: !isLoading && operations.length === 0,
-    
-    // Computed
-    totalConsumption,
-    totalPayments,
+    isLoadingCards,
+    isProcessing: operationMutation.isPending,
+    error: operationMutation.error as Error | null,
+    formData,
+    formErrors,
+    cardOptions,
+    setFormField,
+    handleSubmit,
+    resetForm,
   }
 }
 
