@@ -1,125 +1,150 @@
-# React Scalable App
+# 🚀 Frontend - Tarjetas de Crédito
 
-Estructura de proyecto React escalable con TypeScript, Axios, PrimeReact y Tailwind CSS.
+Aplicación frontend para gestionar tarjetas de crédito y operaciones financieras.
 
-## 📁 Estructura del Proyecto
+## 📋 Requisitos Previos
 
-```
-src/
-├── api/                    # Configuración y endpoints de API
-├── assets/                # Recursos estáticos
-│   ├── fonts/
-│   ├── images/
-│   └── styles/
-│       └── index.css     # Estilos globales con Tailwind
-├── components/            # Componentes React
-│   ├── common/           # Componentes reutilizables
-│   ├── forms/            # Componentes de formularios
-│   └── layout/           # Componentes de layout
-├── constants/             # Constantes de la aplicación
-├── contexts/              # React Contexts
-├── hooks/                 # Custom Hooks
-├── pages/                 # Páginas/Vistas
-├── router/                # Configuración de rutas
-├── services/              # Servicios de negocio
-├── store/                 # Redux Store
-├── types/                 # TypeScript types/interfaces
-└── utils/                 # Utilidades
-```
+Antes de comenzar, necesitas tener instalado:
 
-## 🚀 Instalación
+1. **Node.js** (versión 18 o superior)
+   - Descarga: https://nodejs.org/
+   - Verifica con: `node -v` en tu terminal
+
+2. **npm** (incluido con Node.js)
+   - Verifica con: `npm -v`
+
+## ⚡ Instalación Rápida
 
 ```bash
-# Instalar dependencias
+# 1. Entra a la carpeta del proyecto
+cd frontend
+
+# 2. Instala las dependencias
 npm install
 
-# Iniciar servidor de desarrollo
+# 3. Inicia el proyecto
 npm run dev
+```
 
-# Construir para producción
+## 🎯 Cómo Ejecutar
+
+### Modo Desarrollo (recomendado)
+
+```bash
+npm run dev
+```
+
+Esto abrirá el proyecto en tu navegador en: **http://localhost:5173**
+
+### Para Producción
+
+```bash
+# Construir el proyecto
 npm run build
+
+# Previsualizar el build
+npm run preview
 ```
 
-## 🐳 Docker
+## 🔗 Conectar con el Backend
 
-### Construir imagen (Multi-stage)
+El frontend está configurado para conectarse al backend en:
 
+```
+http://localhost:8080/api/v1
+```
+
+Si tu backend está en otro puerto, crea un archivo `.env` en la raíz del proyecto:
+
+```env
+VITE_API_URL=http://localhost:8080/api/v1
+```
+
+Luego reinicia el servidor de desarrollo.
+
+## 📱 Funcionalidades
+
+### 🧑‍💼 Tarjetas de Crédito
+- ✅ Ver todas las tarjetas
+- ✅ Crear nuevas tarjetas
+- ✅ Cambiar estado (Activa/Bloqueada)
+- ✅ Buscar por nombre o número
+- ✅ Ver detalles de cada tarjeta (efecto flip)
+
+### 💳 Operaciones
+- ✅ Registrar consumos
+- ✅ Registrar pagos
+- ✅ Seleccionar tarjeta activa
+- ✅ Ver historial de operaciones
+
+## 🛠️ Estructura del Proyecto
+
+```
+frontend/
+├── src/
+│   ├── api/           # Conexiones al backend
+│   ├── components/    # Componentes visuales
+│   ├── hooks/         # Lógica de la aplicación
+│   ├── pages/         # Páginas principales
+│   ├── types/         # Tipos de TypeScript
+│   └── utils/         # Funciones útiles
+├── public/            # Archivos estáticos
+├── package.json      # Dependencias
+├── vite.config.ts    # Configuración de Vite
+└── README.md         # Este archivo
+```
+
+## 📦 Dependencias Principales
+
+| Paquete | Descripción |
+|---------|-------------|
+| React | Framework de UI |
+| TypeScript | Lenguaje con tipos |
+| PrimeReact | Componentes UI |
+| Tailwind CSS | Estilos |
+| Axios | Peticiones HTTP |
+| TanStack Query | Gestión de datos |
+| React Router | Navegación |
+
+## ❓ Problemas Comunes
+
+### "npm install" falla
 ```bash
-docker build -t react-app:latest .
+# Limpia la caché e intenta de nuevo
+rm -rf node_modules package-lock.json
+npm install
 ```
 
-### Ejecutar contenedor
+### El puerto 5173 está en uso
+El servidor te dirá qué puerto usar (ej: 5174, 5175)
 
-```bash
-docker run -p 8080:8080 --name react-app react-app:latest
-```
+### No conecta al backend
+1. Verifica que el backend esté corriendo
+2. Revisa la URL en `src/constants/api.config.ts`
+3. Crea el archivo `.env` con la URL correcta
 
-### Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-## 🛠️ Características
-
-- **React 18** con TypeScript
-- **Vite** como bundler
-- **Tailwind CSS** para estilos
-- **PrimeReact** para componentes UI
-- **Axios** para peticiones HTTP
-- **Redux Toolkit** para estado global
-- **React Router** para navegación
-- **Multi-stage Docker build** optimizado
-- **Nginx Alpine** sin root para producción
-- **Security headers** configurados
-- **Health checks** incluidos
-
-## 📦 Scripts
+## 📞 Comandos Útiles
 
 | Comando | Descripción |
 |---------|-------------|
-| `npm run dev` | Inicia servidor de desarrollo |
-| `npm run build` | Construye para producción |
-| `npm run preview` | Previsualiza build de producción |
-| `npm run lint` | Ejecuta ESLint |
+| `npm install` | Instalar dependencias |
+| `npm run dev` | Iniciar desarrollo |
+| `npm run build` | Construir para producción |
+| `npm run lint` | Revisar código |
+| `npm run preview` | Ver build de producción |
 
-## 🔧 Configuración
+---
 
-### Variables de entorno
+## 🐳 Ejecutar con Docker (Opcional)
 
-Crea un archivo `.env` en la raíz:
+```bash
+# Construir imagen
+docker build -t frontend:latest .
 
-```env
-VITE_API_URL=http://localhost:3001/api
+# Ejecutar
+docker run -p 8080:8080 frontend:latest
 ```
 
-### Path Aliases
+---
 
-Los siguientes alias están configurados:
-
-- `@/` → `src/`
-- `@components/` → `src/components/`
-- `@hooks/` → `src/hooks/`
-- `@store/` → `src/store/`
-- `@assets/` → `src/assets/`
-
-## 🐳 Dockerfile (Multi-stage)
-
-El Dockerfile incluye 3 stages:
-
-1. **deps**: Instala dependencias de producción
-2. **builder**: Compila la aplicación con dependencias de desarrollo
-3. **production**: Imagen final con Nginx Alpine, sin root, optimizada
-
-### Características de seguridad:
-
-- ✅ Ejecución como usuario no-root (`appuser`)
-- ✅ Imagen base Alpine (ligera)
-- ✅ Dependencias actualizadas automáticamente
-- ✅ Headers de seguridad configurados
-- ✅ Health checks
-- ✅ Solo archivos necesarios en imagen final
-
-## 📝 Licencia
-
-MIT
+**¡Listo!** Abre http://localhost:5173 en tu navegador y empieza a usar la aplicación.
