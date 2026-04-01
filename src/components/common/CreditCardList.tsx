@@ -76,7 +76,7 @@ export const CreditCardList: FC<CreditCardListProps> = ({ onViewCard }) => {
 
       {/* Error Message */}
       {error && (
-        <Message severity="error" text={error} />
+        <Message severity="error" text={error.message || 'Error al cargar las tarjetas'} />
       )}
 
       {/* Loading State */}

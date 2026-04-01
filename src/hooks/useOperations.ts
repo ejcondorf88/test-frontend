@@ -2,19 +2,23 @@
  * useOperations Hook
  * Custom hook for operations management
  * Handles: fetching operations, creating operations, active credit cards
+ * Internally uses React Query for data fetching
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { operationsApi, creditCardApi } from '@/api/endpoints'
 import { Operation, OperationFilters, OperationCreateRequest, CreditCard } from '@/types/credit-card.types'
+import { queryKeys } from './useQueries'
 
 interface UseOperationsReturn {
   // State
   operations: Operation[]
   activeCards: CreditCard[]
   isLoading: boolean
+  isFetching: boolean
   isSubmitting: boolean
-  error: string | null
+  error: Error | null
   filters: OperationFilters
   
   // Pagination
@@ -23,11 +27,9 @@ interface UseOperationsReturn {
   total: number
   
   // Actions
-  fetchOperations: () => Promise<void>
-  fetchActiveCards: () => Promise<void>
-  createOperation: (data: OperationCreateRequest) => Promise<void>
   setFilters: (filters: Partial<OperationFilters>) => void
   setPage: (page: number) => void
+  createOperation: (data: OperationCreateRequest) => Promise<void>
   
   // Helpers
   refetch: () => Promise<void>
@@ -39,115 +41,95 @@ interface UseOperationsReturn {
 }
 
 export function useOperations(): UseOperationsReturn {
-  // State
-  const [operations, setOperations] = useState<Operation[]>([])
-  const [activeCards, setActiveCards] = useState<CreditCard[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  
+  // Filters state
   const [filters, setFiltersState] = useState<OperationFilters>({
     page: 1,
     limit: 10,
   })
   
-  // Pagination state
-  const [page, setPageState] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [total, setTotal] = useState(0)
-
-  // Fetch operations
-  const fetchOperations = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      const response = await operationsApi.getAll({
-        ...filters,
-        page,
-      })
-      
-      setOperations(response.data ?? [])
-      setTotalPages(response.totalPages ?? 0)
-      setTotal(response.total ?? 0)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar las operaciones')
-      setOperations([])
-      setTotalPages(0)
-      setTotal(0)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [filters, page])
-
-  // Fetch active credit cards
-  const fetchActiveCards = useCallback(async () => {
-    try {
-      const response = await creditCardApi.getAll({ status: 'ACTIVA', limit: 100 })
-      setActiveCards(response.data ?? [])
-    } catch (err) {
-      console.error('Error fetching active cards:', err)
-      setActiveCards([])
-    }
-  }, [])
-
-  // Create operation
-  const createOperation = useCallback(async (data: OperationCreateRequest) => {
-    setIsSubmitting(true)
-    setError(null)
-    
-    try {
-      await operationsApi.create(data)
-      await fetchOperations() // Refetch after creating
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear la operación')
-      throw err
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [fetchOperations])
-
-  // Set filters
+  // Compute current page
+  const page = filters.page ?? 1
+  
+  // Build query key with filters
+  const operationsQueryKey = useMemo(
+    () => queryKeys.operations.list(filters),
+    [filters]
+  )
+  
+  // React Query for fetching operations
+  const { data: operationsData, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: operationsQueryKey,
+    queryFn: () => operationsApi.getAll(filters),
+  })
+  
+  // Extract operations data
+  const operations = operationsData?.data ?? []
+  const totalPages = operationsData?.totalPages ?? 0
+  const total = operationsData?.total ?? 0
+  
+  // React Query for fetching active cards
+  const { data: activeCardsData } = useQuery({
+    queryKey: queryKeys.creditCards.active(),
+    queryFn: () => creditCardApi.getAll({ status: 'ACTIVA', limit: 100 }),
+  })
+  
+  const activeCards = activeCardsData?.data ?? []
+  
+  // Mutation for creating operations
+  const createOperationMutation = useMutation({
+    mutationFn: (data: OperationCreateRequest) => operationsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.operations.all })
+    },
+  })
+  
+  // Set filters - resets to page 1 on filter change
   const setFilters = useCallback((newFilters: Partial<OperationFilters>) => {
-    setFiltersState((prev) => ({ ...prev, ...newFilters }))
-    setPageState(1) // Reset to page 1 on filter change
+    setFiltersState((prev) => {
+      const updated = { ...prev, ...newFilters }
+      if (newFilters.cardId !== undefined || newFilters.type !== undefined) {
+        updated.page = 1
+      }
+      return updated
+    })
   }, [])
-
+  
   // Set page
   const setPage = useCallback((newPage: number) => {
-    setPageState(newPage)
+    setFiltersState((prev) => ({ ...prev, page: newPage }))
   }, [])
-
+  
+  // Create operation
+  const createOperation = useCallback(async (data: OperationCreateRequest) => {
+    await createOperationMutation.mutateAsync(data)
+  }, [createOperationMutation])
+  
   // Refetch
-  const refetch = useCallback(async () => {
-    await fetchOperations()
-  }, [fetchOperations])
-
+  const refetchOperations = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+  
   // Computed values
-  const totalConsumption = operations
-    .filter(op => op.type === 'CONSUMO')
-    .reduce((sum, op) => sum + op.amount, 0)
-
-  const totalPayments = operations
-    .filter(op => op.type === 'PAGO')
-    .reduce((sum, op) => sum + op.amount, 0)
-
-  // Initial fetch
-  useEffect(() => {
-    fetchOperations()
-  }, [fetchOperations])
-
-  // Fetch active cards on mount
-  useEffect(() => {
-    fetchActiveCards()
-  }, [fetchActiveCards])
-
+  const totalConsumption = useMemo(
+    () => operations.filter(op => op.type === 'CONSUMO').reduce((sum, op) => sum + op.amount, 0),
+    [operations]
+  )
+  
+  const totalPayments = useMemo(
+    () => operations.filter(op => op.type === 'PAGO').reduce((sum, op) => sum + op.amount, 0),
+    [operations]
+  )
+  
   return {
     // State
     operations,
     activeCards,
     isLoading,
-    isSubmitting,
-    error,
+    isFetching,
+    isSubmitting: createOperationMutation.isPending,
+    error: error as Error | null,
     filters,
     
     // Pagination
@@ -156,14 +138,12 @@ export function useOperations(): UseOperationsReturn {
     total,
     
     // Actions
-    fetchOperations,
-    fetchActiveCards,
-    createOperation,
     setFilters,
     setPage,
+    createOperation,
     
     // Helpers
-    refetch,
+    refetch: refetchOperations,
     isEmpty: !isLoading && operations.length === 0,
     
     // Computed

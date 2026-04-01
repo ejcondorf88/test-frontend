@@ -2,17 +2,21 @@
  * useCreditCards Hook
  * Custom hook for credit card list management
  * Handles: fetching, filtering, pagination, loading states
+ * Internally uses React Query for data fetching
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { creditCardApi } from '@/api/endpoints'
 import { CreditCard, CreditCardFilters } from '@/types/credit-card.types'
+import { queryKeys } from './useQueries'
 
 interface UseCreditCardsReturn {
   // State
   cards: CreditCard[]
   isLoading: boolean
-  error: string | null
+  isFetching: boolean
+  error: Error | null
   filters: CreditCardFilters
   
   // Pagination
@@ -21,7 +25,6 @@ interface UseCreditCardsReturn {
   total: number
   
   // Actions
-  fetchCards: () => Promise<void>
   setFilters: (filters: Partial<CreditCardFilters>) => void
   setPage: (page: number) => void
   setStatusFilter: (status: string | undefined) => void
@@ -34,10 +37,9 @@ interface UseCreditCardsReturn {
 }
 
 export function useCreditCards(): UseCreditCardsReturn {
-  // State
-  const [cards, setCards] = useState<CreditCard[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  
+  // Filters state
   const [filters, setFiltersState] = useState<CreditCardFilters>({
     page: 1,
     limit: 10,
@@ -45,83 +47,79 @@ export function useCreditCards(): UseCreditCardsReturn {
     search: '',
   })
   
-  // Pagination state
-  const [page, setPageState] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [total, setTotal] = useState(0)
-
-  // Fetch cards
-  const fetchCards = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      const response = await creditCardApi.getAll({
-        ...filters,
-        page,
-      })
-      
-      // API returns CreditCardListResponse directly
-      setCards(response.data ?? [])
-      setTotalPages(response.totalPages ?? 0)
-      setTotal(response.total ?? 0)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar las tarjetas')
-      setCards([])
-      setTotalPages(0)
-      setTotal(0)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [filters, page])
-
-  // Set filters
+  // Compute current page
+  const page = filters.page ?? 1
+  
+  // Build query key with filters
+  const queryKey = useMemo(
+    () => queryKeys.creditCards.list(filters),
+    [filters]
+  )
+  
+  // React Query for fetching cards
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey,
+    queryFn: () => creditCardApi.getAll(filters),
+  })
+  
+  // Extract response data
+  const cards = data?.data ?? []
+  const totalPages = data?.totalPages ?? 0
+  const total = data?.total ?? 0
+  
+  // Mutation for updating status
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'ACTIVA' | 'BLOQUEADA' }) =>
+      creditCardApi.updateStatus(id, status),
+    onSuccess: () => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: queryKeys.creditCards.all })
+    },
+  })
+  
+  // Set filters - resets to page 1 on filter change
   const setFilters = useCallback((newFilters: Partial<CreditCardFilters>) => {
-    setFiltersState((prev) => ({ ...prev, ...newFilters }))
-    setPageState(1) // Reset to page 1 on filter change
+    setFiltersState((prev) => {
+      const updated = { ...prev, ...newFilters }
+      // Reset to page 1 if page-specific filters change
+      if (newFilters.status !== undefined || newFilters.search !== undefined) {
+        updated.page = 1
+      }
+      return updated
+    })
   }, [])
-
+  
   // Set page
   const setPage = useCallback((newPage: number) => {
-    setPageState(newPage)
+    setFiltersState((prev) => ({ ...prev, page: newPage }))
   }, [])
-
+  
   // Set status filter
   const setStatusFilter = useCallback((status: string | undefined) => {
     setFilters({ status: status as CreditCardFilters['status'] })
   }, [setFilters])
-
+  
   // Set search filter
   const setSearchFilter = useCallback((search: string) => {
     setFilters({ search })
   }, [setFilters])
-
+  
   // Update status
   const updateStatus = useCallback(async (id: number, status: 'ACTIVA' | 'BLOQUEADA') => {
-    try {
-      await creditCardApi.updateStatus(id, status)
-      await fetchCards() // Refetch after action
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Error al actualizar el estado`)
-      throw err
-    }
-  }, [fetchCards])
-
+    await updateStatusMutation.mutateAsync({ id, status })
+  }, [updateStatusMutation])
+  
   // Refetch
-  const refetch = useCallback(async () => {
-    await fetchCards()
-  }, [fetchCards])
-
-  // Initial fetch
-  useEffect(() => {
-    fetchCards()
-  }, [fetchCards])
-
+  const refetchCards = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+  
   return {
     // State
     cards,
     isLoading,
-    error,
+    isFetching,
+    error: error as Error | null,
     filters,
     
     // Pagination
@@ -130,7 +128,6 @@ export function useCreditCards(): UseCreditCardsReturn {
     total,
     
     // Actions
-    fetchCards,
     setFilters,
     setPage,
     setStatusFilter,
@@ -138,7 +135,7 @@ export function useCreditCards(): UseCreditCardsReturn {
     updateStatus,
     
     // Helpers
-    refetch,
+    refetch: refetchCards,
     isEmpty: !isLoading && cards.length === 0,
   }
 }

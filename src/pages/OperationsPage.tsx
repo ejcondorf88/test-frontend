@@ -210,7 +210,7 @@ export const OperationsPage: FC = () => {
       {/* Error Message */}
       {error && (
         <div className="p-4 mb-4 bg-red-100 border-round p-3">
-          <span className="text-red-700">{error}</span>
+          <span className="text-red-700">{error.message || 'Error al cargar las operaciones'}</span>
         </div>
       )}
 

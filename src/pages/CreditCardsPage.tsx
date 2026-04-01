@@ -17,18 +17,15 @@ export const CreditCardsPage: FC = () => {
   const navigate = useNavigate()
   const toastRef = useRef<Toast>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   // Handle view card details
   const handleViewCard = (id: number) => {
     navigate(`/credit-cards/${id}`)
   }
 
-  // Handle successful creation
-  const handleCreateSuccess = async () => {
+  // Handle successful creation - React Query handles cache invalidation automatically
+  const handleCreateSuccess = () => {
     setShowCreateModal(false)
-    // Refresh the list by updating the key
-    setRefreshKey(prev => prev + 1)
     toastRef.current?.show({
       severity: 'success',
       summary: 'Éxito',
@@ -60,9 +57,8 @@ export const CreditCardsPage: FC = () => {
         />
       </div>
 
-      {/* Credit Card List - refresh when key changes */}
+      {/* Credit Card List */}
       <CreditCardList 
-        key={refreshKey}
         onViewCard={handleViewCard} 
       />
 

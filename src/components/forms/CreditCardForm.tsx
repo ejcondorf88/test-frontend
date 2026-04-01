@@ -58,7 +58,7 @@ export const CreditCardForm: FC<CreditCardFormProps> = ({ onSuccess, onCancel })
 
       {/* Error Message */}
       {error && (
-        <Message severity="error" text={error} className="mb-4" />
+        <Message severity="error" text={error.message || 'Error al crear la tarjeta'} className="mb-4" />
       )}
 
       {/* Success Message */}
