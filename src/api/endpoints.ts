@@ -1,21 +1,22 @@
 /**
- * API Endpoints - Credit Card Service
+ * API Endpoints
  * 
- * Puerto 9000 - Credit Card Service (tarjetas):
- * - GET    /api/v1/credit-cards     - Listar todas las tarjetas
- * - GET    /api/v1/credit-cards/{id} - Obtener tarjeta por ID
- * - POST   /api/v1/credit-cards      - Crear tarjeta
- * - PATCH  /api/v1/credit-cards/{id}/status   - Actualizar estado
- * - PATCH  /api/v1/credit-cards/{id}/balance  - Operar saldo
+ * Credit Card Service (Puerto 9000):
+ * - GET    /api/v1/creditcards          - Listar todas las tarjetas
+ * - GET    /api/v1/creditcards/{id}     - Obtener tarjeta por ID
+ * - POST   /api/v1/creditcards           - Crear tarjeta
+ * - PATCH  /api/v1/creditcards/{id}/status   - Actualizar estado
+ * - PATCH  /api/v1/creditcards/{id}/balance  - Operar saldo
  * 
- * Puerto 9092 - Credit Card Service (operaciones):
- * - GET    /api/v1/credit-cards/active - Listar tarjetas activas
+ * Operations Service (Puerto 9093):
+ * - GET    /api/v1/credit-cards/active  - Listar tarjetas activas
+ * - POST   /api/v1/operations             - Procesar operación
  */
 
 import axios from 'axios'
 import { CreditCard, CreditCardFilters, CreditCardCreateRequest } from '@/types/credit-card.types'
 
-// Tipos para operaciones de balance
+// Tipos para operaciones
 export type OperationType = 'CONSUMO' | 'PAGO'
 
 export interface UpdateBalanceRequest {
@@ -23,14 +24,29 @@ export interface UpdateBalanceRequest {
   operation: OperationType
 }
 
-// Cliente principal (puerto 9000) - usa proxy /api
-const mainClient = axios.create({
+export interface OperationRequest {
+  cardId: number
+  amount: number
+  operation: OperationType
+}
+
+export interface OperationResponse {
+  cardId: number
+  previousBalance: number
+  newBalance: number
+  amount: number
+  operation: OperationType
+  processedAt: string
+}
+
+// Cliente Credit Card Service (puerto 9000)
+const creditCardClient = axios.create({
   baseURL: '/api/v1',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Cliente para operaciones (puerto 9092) - usa proxy /operations-api
+// Cliente Operations Service (puerto 9093)
 const operationsClient = axios.create({
   baseURL: '/operations-api/v1',
   timeout: 30000,
@@ -38,8 +54,12 @@ const operationsClient = axios.create({
 })
 
 export const creditCardApi = {
+  // =====================
+  // Credit Card Service (9000)
+  // =====================
+
   /**
-   * GET /credit-cards - Todas las tarjetas (puerto 9000)
+   * GET /api/v1/creditcards
    */
   getAll: async (filters?: CreditCardFilters): Promise<CreditCard[]> => {
     const params = new URLSearchParams()
@@ -49,14 +69,57 @@ export const creditCardApi = {
     if (filters?.limit) params.append('limit', String(filters.limit))
 
     const queryString = params.toString()
-    const url = queryString ? `/credit-cards?${queryString}` : '/credit-cards'
+    const url = queryString ? `/creditcards?${queryString}` : '/creditcards'
 
-    const response = await mainClient.get<CreditCard[]>(url)
+    const response = await creditCardClient.get<CreditCard[]>(url)
     return response.data
   },
 
   /**
-   * GET /credit-cards/active - Tarjetas activas (puerto 9092)
+   * GET /api/v1/creditcards/{id}
+   */
+  getById: async (id: number): Promise<CreditCard> => {
+    const response = await creditCardClient.get<CreditCard>(`/creditcards/${id}`)
+    return response.data
+  },
+
+  /**
+   * POST /api/v1/creditcards
+   */
+  create: async (data: CreditCardCreateRequest): Promise<CreditCard> => {
+    const response = await creditCardClient.post<CreditCard>('/creditcards', data)
+    return response.data
+  },
+
+  /**
+   * PATCH /api/v1/creditcards/{id}/status
+   */
+  updateStatus: async (id: number, status: 'ACTIVA' | 'BLOQUEADA'): Promise<CreditCard> => {
+    const response = await creditCardClient.patch<CreditCard>(`/creditcards/${id}/status`, { status })
+    return response.data
+  },
+
+  /**
+   * PATCH /api/v1/creditcards/{id}/balance
+   */
+  updateBalance: async (id: number, data: UpdateBalanceRequest): Promise<CreditCard> => {
+    const response = await creditCardClient.patch<CreditCard>(`/creditcards/${id}/balance`, data)
+    return response.data
+  },
+
+  /**
+   * DELETE /api/v1/creditcards/{id}
+   */
+  delete: async (id: number): Promise<void> => {
+    await creditCardClient.delete(`/creditcards/${id}`)
+  },
+
+  // =====================
+  // Operations Service (9093)
+  // =====================
+
+  /**
+   * GET /api/v1/credit-cards/active
    */
   getActive: async (): Promise<CreditCard[]> => {
     const response = await operationsClient.get<CreditCard[]>('/credit-cards/active')
@@ -64,41 +127,10 @@ export const creditCardApi = {
   },
 
   /**
-   * GET /credit-cards/{id} (puerto 9000)
+   * POST /api/v1/operations
    */
-  getById: async (id: number): Promise<CreditCard> => {
-    const response = await mainClient.get<CreditCard>(`/credit-cards/${id}`)
+  createOperation: async (data: OperationRequest): Promise<OperationResponse> => {
+    const response = await operationsClient.post<OperationResponse>('/operations', data)
     return response.data
-  },
-
-  /**
-   * POST /credit-cards (puerto 9000)
-   */
-  create: async (data: CreditCardCreateRequest): Promise<CreditCard> => {
-    const response = await mainClient.post<CreditCard>('/credit-cards', data)
-    return response.data
-  },
-
-  /**
-   * PATCH /credit-cards/{id}/status (puerto 9000)
-   */
-  updateStatus: async (id: number, status: 'ACTIVA' | 'BLOQUEADA'): Promise<CreditCard> => {
-    const response = await mainClient.patch<CreditCard>(`/credit-cards/${id}/status`, { status })
-    return response.data
-  },
-
-  /**
-   * PATCH /credit-cards/{id}/balance (puerto 9000)
-   */
-  updateBalance: async (id: number, data: UpdateBalanceRequest): Promise<CreditCard> => {
-    const response = await mainClient.patch<CreditCard>(`/credit-cards/${id}/balance`, data)
-    return response.data
-  },
-
-  /**
-   * DELETE /credit-cards/{id} (puerto 9000)
-   */
-  delete: async (id: number): Promise<void> => {
-    await mainClient.delete(`/credit-cards/${id}`)
   },
 }
