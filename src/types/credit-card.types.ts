@@ -30,3 +30,29 @@ export interface CreditCardFilters {
   page?: number
   limit?: number
 }
+
+// DTO for creating a new credit card (matches backend)
+export interface CreditCardCreateRequest {
+  cardNumber: string
+  holderName: string
+  creditLimit: number
+  availableBalance: number
+  status: CreditCardStatus
+}
+
+// Form validation
+export interface CreditCardFormData {
+  cardNumber: string
+  holderName: string
+  creditLimit: string
+  availableBalance: string
+  status: CreditCardStatus
+}
+
+export interface CreditCardFormErrors {
+  cardNumber?: string
+  holderName?: string
+  creditLimit?: string
+  availableBalance?: string
+  status?: string
+}
