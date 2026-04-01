@@ -114,8 +114,8 @@ export const CreditCardForm: FC<CreditCardFormProps> = ({ onSuccess, onCancel })
             value={formData.creditLimit ? Number(formData.creditLimit) : null}
             onValueChange={(e) => handleChange('creditLimit', String(e.value ?? ''))}
             mode="currency"
-            currency="EUR"
-            locale="es-ES"
+            currency="USD"
+            locale="en-US"
             placeholder="5000.00"
             className={`w-full ${errors.creditLimit ? 'p-invalid' : ''}`}
             min={0}
@@ -134,8 +134,8 @@ export const CreditCardForm: FC<CreditCardFormProps> = ({ onSuccess, onCancel })
             value={formData.availableBalance ? Number(formData.availableBalance) : null}
             onValueChange={(e) => handleChange('availableBalance', String(e.value ?? ''))}
             mode="currency"
-            currency="EUR"
-            locale="es-ES"
+            currency="USD"
+            locale="en-US"
             placeholder="5000.00"
             className={`w-full ${errors.availableBalance ? 'p-invalid' : ''}`}
             min={0}

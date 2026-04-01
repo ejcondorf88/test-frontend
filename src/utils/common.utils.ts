@@ -19,13 +19,13 @@ export const formatDate = (
 }
 
 /**
- * Formats a number as currency
+ * Formats a number as currency (default USD)
  */
 export const formatCurrency = (
   amount: number,
-  currency: string = 'EUR'
+  currency: string = 'USD'
 ): string => {
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
   }).format(amount)

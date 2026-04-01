@@ -116,7 +116,8 @@ export const OperationsPage: FC = () => {
               value={formData.amount ? parseFloat(formData.amount) : null}
               onChange={(e) => setFormField('amount', e.value?.toString() || '')}
               mode="currency"
-              currency="MXN"
+              currency="USD"
+              locale="en-US"
               className={formErrors.amount ? 'p-invalid' : ''}
             />
             {formErrors.amount && <small className="p-error">{formErrors.amount}</small>}
