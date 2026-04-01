@@ -3,7 +3,7 @@
  * Displays a grid of credit cards with filters and pagination
  */
 
-import { FC, useState } from 'react'
+import { FC } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Paginator } from 'primereact/paginator'
@@ -11,14 +11,7 @@ import { ProgressSpinner } from 'primereact/progressspinner'
 import { Message } from 'primereact/message'
 import { Button } from 'primereact/button'
 import { CreditCardCard } from './CreditCardCard'
-import { useCreditCards } from '@/hooks/useCreditCards'
-
-// Status options for dropdown
-const statusOptions = [
-  { label: 'Todos', value: undefined },
-  { label: 'Activas', value: 'ACTIVA' },
-  { label: 'Bloqueadas', value: 'BLOQUEADA' },
-]
+import { useCreditCardList, statusOptions } from '@/hooks/useCreditCardList'
 
 interface CreditCardListProps {
   onViewCard?: (id: number) => void
@@ -34,33 +27,13 @@ export const CreditCardList: FC<CreditCardListProps> = ({ onViewCard }) => {
     total,
     setPage,
     setStatusFilter,
-    setSearchFilter,
-    updateStatus,
+    searchValue,
+    setSearchValue,
+    handleSearch,
+    handleSearchKeyPress,
+    handleStatusChange,
     isEmpty,
-  } = useCreditCards()
-
-  const [searchValue, setSearchValue] = useState('')
-
-  // Handle search submit
-  const handleSearch = () => {
-    setSearchFilter(searchValue)
-  }
-
-  // Handle search key press
-  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch()
-    }
-  }
-
-  // Handle status change
-  const handleStatusChange = async (id: number, status: 'ACTIVA' | 'BLOQUEADA') => {
-    try {
-      await updateStatus(id, status)
-    } catch {
-      // Error handled in hook
-    }
-  }
+  } = useCreditCardList()
 
   return (
     <div className="space-y-6">

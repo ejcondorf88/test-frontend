@@ -3,7 +3,7 @@
  * Page for managing credit card operations (consumption and payments)
  */
 
-import { FC, useState } from 'react'
+import { FC, useRef, useMemo } from 'react'
 import { Card } from 'primereact/card'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
@@ -12,110 +12,42 @@ import { InputNumber } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
 import { Button } from 'primereact/button'
 import { Toast } from 'primereact/toast'
-import { useRef } from 'react'
-import { useOperations } from '@/hooks'
-import { OperationType, OperationFormData, OperationFormErrors } from '@/types/credit-card.types'
+import { useOperations, useOperationForm } from '@/hooks'
+import { OperationType } from '@/types/credit-card.types'
 
 export const OperationsPage: FC = () => {
   const toast = useRef<Toast>(null)
   
+  // Data fetching for operations list
   const {
     operations,
-    activeCards,
     isLoading,
-    isSubmitting,
     error,
     totalConsumption,
     totalPayments,
-    createOperation,
-    refetch,
   } = useOperations()
-
-  // Form state
-  const [formData, setFormData] = useState<OperationFormData>({
-    cardId: null,
-    type: 'CONSUMO',
-    amount: '',
-    description: '',
-  })
-
-  const [formErrors, setFormErrors] = useState<OperationFormErrors>({})
+  
+  // Form logic
+  const {
+    formData,
+    formErrors,
+    cardOptions,
+    typeOptions,
+    handleCardChange,
+    handleTypeChange,
+    handleAmountChange,
+    handleDescriptionChange,
+    handleSubmit,
+    isSubmitting,
+  } = useOperationForm()
 
   // Format currency
-  const formatCurrency = (value: number) => {
+  const formatCurrency = useMemo(() => (value: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN',
     }).format(value)
-  }
-
-  // Card options for dropdown
-  const cardOptions = activeCards.map(card => ({
-    label: `${card.cardNumber} - ${card.holderName}`,
-    value: card.id,
-  }))
-
-  // Type options for dropdown
-  const typeOptions = [
-    { label: 'Consumo', value: 'CONSUMO' },
-    { label: 'Pago', value: 'PAGO' },
-  ]
-
-  // Validate form
-  const validateForm = (): boolean => {
-    const errors: OperationFormErrors = {}
-    
-    if (!formData.cardId) {
-      errors.cardId = 'Selecciona una tarjeta'
-    }
-    
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      errors.amount = 'Ingresa un monto válido'
-    }
-    
-    if (!formData.description.trim()) {
-      errors.description = 'Ingresa una descripción'
-    }
-    
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  // Handle form submit
-  const handleSubmit = async () => {
-    if (!validateForm()) return
-
-    try {
-      await createOperation({
-        cardId: formData.cardId!,
-        type: formData.type,
-        amount: parseFloat(formData.amount),
-        description: formData.description,
-      })
-
-      // Reset form
-      setFormData({
-        cardId: null,
-        type: 'CONSUMO',
-        amount: '',
-        description: '',
-      })
-
-      toast.current?.show({
-        severity: 'success',
-        summary: 'Operación creada',
-        detail: 'La operación se ha registrado correctamente',
-        life: 3000,
-      })
-    } catch (err) {
-      toast.current?.show({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se pudo crear la operación',
-        life: 3000,
-      })
-    }
-  }
+  }, [])
 
   // Table templates
   const typeBodyTemplate = (rowData: { type: OperationType }) => {
@@ -142,6 +74,26 @@ export const OperationsPage: FC = () => {
 
   const cardBodyTemplate = (rowData: { cardNumber: string }) => {
     return rowData.cardNumber
+  }
+
+  // Handle form submit with toast notification
+  const onSubmit = async () => {
+    try {
+      await handleSubmit()
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Operación creada',
+        detail: 'La operación se ha registrado correctamente',
+        life: 3000,
+      })
+    } catch (err) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo crear la operación',
+        life: 3000,
+      })
+    }
   }
 
   return (
@@ -188,7 +140,7 @@ export const OperationsPage: FC = () => {
               id="card"
               value={formData.cardId}
               options={cardOptions}
-              onChange={(e) => setFormData({ ...formData, cardId: e.value })}
+              onChange={(e) => handleCardChange(e.value)}
               placeholder="Selecciona una tarjeta"
               className={formErrors.cardId ? 'p-invalid' : ''}
               filter
@@ -206,7 +158,7 @@ export const OperationsPage: FC = () => {
               id="type"
               value={formData.type}
               options={typeOptions}
-              onChange={(e) => setFormData({ ...formData, type: e.value as OperationType })}
+              onChange={(e) => handleTypeChange(e.value)}
             />
           </div>
 
@@ -216,8 +168,8 @@ export const OperationsPage: FC = () => {
             </label>
             <InputNumber
               id="amount"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: String(e.value ?? '') })}
+              value={formData.amount ? parseFloat(formData.amount) : null}
+              onChange={(e) => handleAmountChange(e.value)}
               mode="currency"
               currency="MXN"
               locale="es-MX"
@@ -235,7 +187,7 @@ export const OperationsPage: FC = () => {
             <InputText
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="Ej: Supermercado, Restaurante, Pago mínimo"
               className={formErrors.description ? 'p-invalid' : ''}
             />
@@ -249,7 +201,7 @@ export const OperationsPage: FC = () => {
           <Button
             label="Registrar Operación"
             icon="pi pi-plus"
-            onClick={handleSubmit}
+            onClick={onSubmit}
             loading={isSubmitting}
           />
         </div>
