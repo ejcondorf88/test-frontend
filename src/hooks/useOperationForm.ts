@@ -12,7 +12,7 @@ interface UseOperationFormProps {
   activeCards: CreditCard[]
   isSubmitting: boolean
   error: Error | null
-  onSubmit: (data: { cardId: number; type: OperationType; amount: number; description: string }) => Promise<void>
+  onSubmit: (data: { cardId: number; operation: OperationType; amount: number; description: string }) => Promise<void>
 }
 
 interface UseOperationFormReturn {
@@ -42,7 +42,7 @@ interface UseOperationFormReturn {
 
 const initialFormData: OperationFormData = {
   cardId: null,
-  type: 'CONSUMO',
+  operation: 'CONSUMO',
   amount: '',
   description: '',
 }
@@ -113,7 +113,7 @@ export function useOperationForm({
   }, [formErrors.cardId])
 
   const handleTypeChange = useCallback((value: OperationType) => {
-    setFormData(prev => ({ ...prev, type: value }))
+    setFormData(prev => ({ ...prev, operation: value }))
   }, [])
 
   const handleAmountChange = useCallback((value: number | null) => {
@@ -142,7 +142,7 @@ export function useOperationForm({
 
     await onSubmit({
       cardId: formData.cardId!,
-      type: formData.type,
+      operation: formData.operation,
       amount: parseFloat(formData.amount),
       description: formData.description,
     })
